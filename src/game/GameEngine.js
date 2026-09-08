@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { WorldGenerator } from '../world/WorldGenerator.js';
 import { NetworkManager } from '../network/NetworkManager.js';
+import { AnimalManager } from './AnimalManager.js';
 
 /**
  * Main game engine - 3D Version
@@ -20,6 +21,7 @@ export class GameEngine {
         this.renderer = null;
         this.playerMesh = null;
         this.remoteMeshes = new Map();
+        this.animalManager = null;
 
         // Track connectivity to avoid UI/player flicker on transient WebRTC disconnects.
         this.connectedPeers = new Set();
@@ -179,6 +181,10 @@ export class GameEngine {
 
         // Start on the ground so you can see terrain immediately
         this.snapPlayerToGround();
+
+        // Load each wildlife model once and populate the nearby walkable terrain.
+        this.animalManager = new AnimalManager(this.scene, this.worldGen, this.player);
+        await this.animalManager.init();
 
         // Place camera at player right away (avoid long smoothing from the default camera position)
         if (this.camera) {
@@ -1364,6 +1370,9 @@ export class GameEngine {
 
         // Update player movement
         this.updatePlayer(deltaTime);
+
+        // Update wildlife movement and animation.
+        this.animalManager?.update(deltaTime);
 
         // Footsteps + tree sway trigger
         this.updateFootsteps(now);
@@ -2716,6 +2725,7 @@ export class GameEngine {
      */
     async cleanup() {
         this.stop();
+        this.animalManager?.dispose();
         await this.network.disconnect();
     }
 }
